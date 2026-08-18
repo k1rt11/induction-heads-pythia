@@ -1,21 +1,19 @@
 # Induction Heads in Pythia-160m: Detection and Emergence Across Training
 
 A mechanistic interpretability study of EleutherAI's Pythia models. Using raw PyTorch forward
-hooks and Hugging Face `transformers`, I locate the *induction* circuit in `pythia-160m`,
-**causally test** it by ablation, track **when it forms** across training using Pythia's
-intermediate checkpoints, and check whether that timing holds **across model scale** (70m–410m).
+hooks and Hugging Face transformers, I locate the induction circuit in pythia-160m,
+**causally test** it by ablation, track when it forms across training using Pythia's
+intermediate checkpoints, and check whether that timing holds across model scale (70m–410m).
 
-The core result (induction heads, and their emergence as a phase transition) is a reproduction of
+The core result (induction heads and their emergence as a phase transition) is a reproduction of
 known findings; the causal ablation, the head-by-head developmental tracking, and the cross-scale
 comparison extend it. It is framed as a rigorous case study, not a claim of novel discovery.
 
-> Run end-to-end on a free Colab/Kaggle T4 in an hour of compute.
-
 ## Background
 
-**Induction** is the ability to continue a repeated pattern: shown `… [A][B] … [A]`, a model
-with induction predicts `[B]`. Mechanistically, this is implemented by *induction heads* —
-attention heads that, at the second `[A]`, attend back to the token that *followed* `[A]` last
+**Induction** is the ability to continue a repeated pattern: shown … [A][B] … [A], a model
+with induction predicts [B]. Mechanistically, this is implemented by induction heads, which are
+attention heads that, at the second [A], attend back to the token that followed [A] last
 time and copy it forward. Induction is the most reproducible phenomenon in mechanistic
 interpretability and is known to underpin a large part of in-context learning, which makes it
 an ideal target for a short, reliable study.
@@ -23,13 +21,13 @@ an ideal target for a short, reliable study.
 ## Method
 
 1. **Behavioural check (does the model do it at all?).** I construct sequences of random tokens
-   and repeat them (`[P][P]`), then measure per-position cross-entropy loss. If the model uses
+   and repeat them ([P][P]), then measure per-position cross-entropy loss. If the model uses
    induction, loss should fall sharply at the repeat boundary because the second half is fully
    predictable from the first.
-2. **Internal capture.** I load the model with eager attention (`attn_implementation="eager"`)
+2. **Internal capture.** I load the model with eager attention (attn_implementation="eager")
    so attention weights are exposed, register PyTorch forward hooks on each attention module to
    demonstrate the hook mechanism, and read out the attention probability tensors
-   (`output_attentions=True`) for analysis.
+   (output_attentions=True) for analysis.
 3. **Per-head induction score.** For every (layer, head) I measure how much attention, when
    querying from the repeated half, lands on the induction target (the token after the previous
    occurrence). High score = induction head. This localizes the behaviour to specific heads.
@@ -85,13 +83,13 @@ Sampling eleven checkpoints from the start of training to the end reveals that i
 Through step 512 the induction drop is indistinguishable from zero — the model has not yet built
 the circuit. Between **step 512 and step 1,000 it snaps on**, jumping from ≈0 to ≈10, then
 consolidates and strengthens to ≈19 by the end of training. This is the well-documented induction
-*phase transition*: the behaviour appears abruptly within a narrow training window rather than
+phase transition: the behaviour appears abruptly within a narrow training window rather than
 accumulating gradually. The dense early sampling brackets that window to between step 512 and
 step 1,000.
 
 ### The circuit is causally responsible but redundant
 
-To test whether the identified heads *cause* induction rather than merely correlate with it, I
+To test whether the identified heads cause induction rather than merely correlate with it, I
 ablated them (zeroing each head's contribution at the input to the attention output projection,
 where heads are still separable) and re-measured the induction drop.
 
@@ -131,18 +129,18 @@ in the **same step 512→1,000 window**:
 
 Larger models do **not** acquire induction meaningfully earlier — the onset step is shared across an
 order of magnitude of scale. The sizes differ mainly in final plateau height, though that comparison
-is confounded by differing loss magnitudes across models, so the robust claim is about *timing*, not
-*magnitude*.
+is confounded by differing loss magnitudes across models, so the robust claim is about timing, not
+magnitude.
 
 ## Figures
 
-- `figures/per_position_loss.png` — loss vs. sequence position; the sharp drop at the repeat
+- figures/per_position_loss.png — loss vs. sequence position; the sharp drop at the repeat
   boundary is the behavioural signature of induction.
-- `figures/induction_heatmap.png` — per-head induction scores (layer × head).
-- `figures/emergence.png` — induction drop vs. training step (the phase transition).
-- `figures/ablation.png` — induction drop, baseline vs. ablating the top heads.
-- `figures/head_trajectories.png` — per-head induction score across training (staged assembly).
-- `figures/scale.png` — emergence across 70m / 160m / 410m.
+- figures/induction_heatmap.png — per-head induction scores (layer × head).
+- figures/emergence.png — induction drop vs. training step (the phase transition).
+- figures/ablation.png — induction drop, baseline vs. ablating the top heads.
+- figures/head_trajectories.png — per-head induction score across training (staged assembly).
+- figures/scale.png — emergence across 70m / 160m / 410m.
 
 ## Limitations
 
@@ -156,7 +154,7 @@ is confounded by differing loss magnitudes across models, so the robust claim is
   checkpoints between 512 and 1,000, so the transition cannot be resolved more finely without a
   differently-logged training run.
 - **Cross-size magnitudes not comparable.** The scale comparison supports a claim about emergence
-  *timing*, not plateau *height*, because loss magnitudes differ across model sizes.
+  timing, not plateau height, because loss magnitudes differ across model sizes.
 - **One stimulus type.** Repeated random tokens probe copy-style induction specifically, not all
   forms of in-context learning.
 
@@ -178,12 +176,12 @@ hundred MB of download per checkpoint.
 pip install --upgrade transformers
 ```
 
-Then run `pythia_induction.ipynb` top to bottom. Notes: load the model with
-`attn_implementation="eager"` (the fast SDPA backend does not expose attention weights), and do
-not upgrade `torch` on Kaggle/Colab — the preinstalled version already matches the GPU image, and
+Then run pythia_induction.ipynb top to bottom. Notes: load the model with
+attn_implementation="eager" (the fast SDPA backend does not expose attention weights), and do
+not upgrade torch on Kaggle/Colab — the preinstalled version already matches the GPU image, and
 upgrading it breaks the torchvision/GPT-NeoX import.
 
 ## Stack
 
-PyTorch · Hugging Face `transformers` · `EleutherAI/pythia-160m` (+ training checkpoints) ·
+PyTorch · Hugging Face transformers · EleutherAI/pythia-160m (+ training checkpoints) ·
 NumPy · Matplotlib
